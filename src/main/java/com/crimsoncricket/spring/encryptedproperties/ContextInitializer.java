@@ -94,8 +94,10 @@ public abstract class ContextInitializer implements ApplicationContextInitialize
     }
 
     private Resource resourceFromFileSystem(String name) {
-        return new FileSystemResource("/etc/professionsearch/" + name + ".properties");
+        return new FileSystemResource(overridesDirectory() + "/" + name + ".properties");
     }
+
+    protected abstract String overridesDirectory();
 
     private Optional<Properties> loadedPropertiesWithEmtpyValueOnFailure(Resource resource) {
         try {
