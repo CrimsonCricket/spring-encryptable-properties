@@ -1,5 +1,5 @@
 /*
- * Copyright 2015 Martijn van der Woud - The Crimson Cricket Internet Services
+ * Copyright 2016 Martijn van der Woud - The Crimson Cricket Internet Services
  *
  *    Licensed under the Apache License, Version 2.0 (the "License");
  *    you may not use this file except in compliance with the License.
@@ -35,95 +35,140 @@ import java.util.Optional;
 import java.util.Properties;
 
 
-
+/**
+ * Initializer that configures Jasypt-based encrypted property sources to be used
+ * within Spring applications.
+ *
+ * To use the initializer, extend this class in you own project.
+ *
+ */
 public abstract class ContextInitializer implements ApplicationContextInitializer<ConfigurableApplicationContext> {
 
-    private static final Logger logger = LoggerFactory.getLogger(ContextInitializer.class);
-    private final StandardPBEStringEncryptor encryptor;
+	private static final Logger logger = LoggerFactory.getLogger(ContextInitializer.class);
+	private final StandardPBEStringEncryptor encryptor;
 
-    public ContextInitializer() {
+	/**
+	 * Default constructor. Usually, in web applications,  the constructor will be called by a
+	 * {@link org.springframework.web.context.ContextLoaderListener}
+	 */
+	public ContextInitializer() {
 
-        EnvironmentStringPBEConfig encryptionConfig = new EnvironmentStringPBEConfig();
-        encryptionConfig.setAlgorithm("PBEWithMD5AndTripleDES");
-        encryptionConfig.setPasswordEnvName(passwordEnvName());
+		EnvironmentStringPBEConfig encryptionConfig = new EnvironmentStringPBEConfig();
+		encryptionConfig.setAlgorithm("PBEWithMD5AndTripleDES");
+		encryptionConfig.setPasswordEnvName(passwordEnvName());
 
-        encryptor = new StandardPBEStringEncryptor();
-        encryptor.setConfig(encryptionConfig);
-    }
+		encryptor = new StandardPBEStringEncryptor();
+		encryptor.setConfig(encryptionConfig);
+	}
 
-    protected abstract String passwordEnvName();
-
-    public void initialize(ConfigurableApplicationContext applicationContext) {
-        List<String> propertySourceNames = propertySourceNames();
-        for (String name : propertySourceNames)
-            addPropertySource(applicationContext, name);
-    }
-
-    protected abstract List<String> propertySourceNames();
-
-
-    private void addPropertySource(ConfigurableApplicationContext context, String name) {
-        addPropertySourceFromClasspath(context, name);
-        addPropertyOverridesFromFileSystem(context, name);
-    }
+	/**
+	 * Override this method to provide the initializer with the key to use for decrypting encrypted properties
+	 * @return the name of the environment variable that contains the decryption key for the property sources
+	 */
+	@SuppressWarnings("WeakerAccess")
+	protected abstract String passwordEnvName();
 
 
-    private void addPropertySourceFromClasspath(ConfigurableApplicationContext context, String name) {
-        Resource resource = resourceFromClassPath(name);
-        Properties properties = loadedPropertiesWithRuntimeExceptionOnFailure(resource);
-        addEncryptablePropertiesToContext(context, name, properties);
-    }
+	/**
+	 *  Usually, in web applications,  the intialize method will be called by a
+	 * {@link org.springframework.web.context.ContextLoaderListener}
+	 *
+	 * This method configures property sources for all source names provided by
+	 * the overridden implementation of {@link #propertySourceNames}
+	 *
+	 * @param applicationContext a configurable Spring application context
+	 */
+	@Override
+	public void initialize(ConfigurableApplicationContext applicationContext) {
+		List<String> propertySourceNames = propertySourceNames();
+		for (String name : propertySourceNames)
+			addPropertySource(applicationContext, name);
+	}
 
-    private Resource resourceFromClassPath(String name) {
-        return new ClassPathResource("/" + name + ".properties");
-    }
+	/**
+	 * Override this method to specify the names of the encrypted property files
+	 * to be loaded by this initializer. Provide a list of names WITHOUT the .properties extension.
+	 * @return a list of property file names, without the .properties extension
+	 */
+	@SuppressWarnings("WeakerAccess")
+	protected abstract List<String> propertySourceNames();
 
-    private Properties loadedPropertiesWithRuntimeExceptionOnFailure(Resource resource) {
-        try {
-            return PropertiesLoaderUtils.loadProperties(resource);
-        } catch (IOException e) {
-            throw new RuntimeException(e);
-        }
-    }
 
-    private void addPropertyOverridesFromFileSystem(ConfigurableApplicationContext context, String name) {
-        Resource resource = resourceFromFileSystem(name);
-        Optional<Properties> properties = loadedPropertiesWithEmtpyValueOnFailure(resource);
-        if (properties.isPresent())
-            addEncryptablePropertiesToContext(context, name + "Override", properties.get());
-    }
+	private void addPropertySource(ConfigurableApplicationContext context, String name) {
+		addPropertySourceFromClasspath(context, name);
+		addPropertyOverridesFromFileSystem(context, name);
+	}
 
-    private Resource resourceFromFileSystem(String name) {
-        return new FileSystemResource(overridesDirectory() + "/" + name + ".properties");
-    }
 
-    protected abstract String overridesDirectory();
+	private void addPropertySourceFromClasspath(ConfigurableApplicationContext context, String name) {
+		Resource resource = resourceFromClassPath(name);
+		Properties properties = loadedPropertiesWithRuntimeExceptionOnFailure(resource);
+		addEncryptablePropertiesToContext(context, name, properties);
+	}
 
-    private Optional<Properties> loadedPropertiesWithEmtpyValueOnFailure(Resource resource) {
-        try {
-            return Optional.of(PropertiesLoaderUtils.loadProperties(resource));
-        } catch (IOException e) {
-            return Optional.empty();
-        }
-    }
+	private Resource resourceFromClassPath(String name) {
+		return new ClassPathResource("/" + name + ".properties");
+	}
 
-    private void addEncryptablePropertiesToContext(ConfigurableApplicationContext context, String name, Properties properties) {
-        EncryptablePropertiesPropertySource propertySource = encryptablePropertySource(name, properties);
-        addPropertySourceToContext(context, propertySource);
-        logger.info("Encryptable properties added: " + name);
-    }
+	private Properties loadedPropertiesWithRuntimeExceptionOnFailure(Resource resource) {
+		try {
+			return PropertiesLoaderUtils.loadProperties(resource);
+		} catch (IOException e) {
+			throw new RuntimeException(e);
+		}
+	}
 
-    private EncryptablePropertiesPropertySource encryptablePropertySource(String name, Properties properties) {
-        return new EncryptablePropertiesPropertySource(
-                name,
-                properties,
-                encryptor
-        );
-    }
+	private void addPropertyOverridesFromFileSystem(ConfigurableApplicationContext context, String name) {
+		Resource resource = resourceFromFileSystem(name);
+		Optional<Properties> properties = loadedPropertiesWithEmptyValueOnFailure(resource);
+		properties.ifPresent(props -> addEncryptablePropertiesToContext(context, name + "Override", props));
+	}
 
-    private void addPropertySourceToContext(ConfigurableApplicationContext context, EncryptablePropertiesPropertySource propertySource) {
-        context.getEnvironment().getPropertySources().addFirst(propertySource);
-    }
+	private Resource resourceFromFileSystem(String name) {
+		return new FileSystemResource(overridesDirectory() + "/" + name + ".properties");
+	}
+
+	/**
+	 * Override this method to specify a directory containing overrides for the proeprty files
+	 * loaded by this initializer. For each name specified in {@link #propertySourceNames()},
+	 * the initializer will try to find an equally named file in this directory.
+	 *
+	 * If the override file does not exist, it will be ignored.
+	 * If the override file does exist, all properties in that file will override the value
+	 * of an equally named property specified in the original file.
+	 *
+	 * @return the full directory path of a directory containing overrides for property files
+	 */
+	@SuppressWarnings("WeakerAccess")
+	protected String overridesDirectory() {
+		return "";
+	}
+
+	private Optional<Properties> loadedPropertiesWithEmptyValueOnFailure(Resource resource) {
+		try {
+			return Optional.of(PropertiesLoaderUtils.loadProperties(resource));
+		} catch (IOException e) {
+			return Optional.empty();
+		}
+	}
+
+	private void addEncryptablePropertiesToContext(ConfigurableApplicationContext context, String name, Properties properties) {
+		EncryptablePropertiesPropertySource propertySource = encryptablePropertySource(name, properties);
+		addPropertySourceToContext(context, propertySource);
+		logger.info("Encryptable properties added: " + name);
+	}
+
+	private EncryptablePropertiesPropertySource encryptablePropertySource(String name, Properties properties) {
+		return new EncryptablePropertiesPropertySource(
+				name,
+				properties,
+				encryptor
+		);
+	}
+
+	private void addPropertySourceToContext(ConfigurableApplicationContext context, EncryptablePropertiesPropertySource propertySource) {
+		context.getEnvironment().getPropertySources().addFirst(propertySource);
+	}
 
 
 }
