@@ -24,16 +24,19 @@ import java.util.List;
 
 public class EncryptedPropertiesInitializer extends ContextInitializer {
 
+	@Override
 	protected String passwordEnvName() {
 		return "EXAMPLE_APP_ENCRYPTION_KEY";
 	}
 
+	@Override
 	protected List<String> propertySourceNames() {
 		List<String> names= new ArrayList<>();
 		names.add("application");
 		return names;
 	}
 
+	@Override
 	protected String overridesDirectory() {
 		return "/etc/example-app";
 	}

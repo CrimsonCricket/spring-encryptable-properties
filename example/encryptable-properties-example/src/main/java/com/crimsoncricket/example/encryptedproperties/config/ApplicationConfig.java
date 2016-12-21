@@ -33,7 +33,6 @@ import javax.annotation.Resource;
 @EnableWebMvc
 public class ApplicationConfig extends WebMvcConfigurerAdapter {
 
-
 	@Resource
 	private Environment environment;
 
