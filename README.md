@@ -1,6 +1,6 @@
-# spring-encryptable-properties
+# Spring encryptable properties
 
-Spring-encryptable-properties is a simple utility for enabling encryption of sensitive information within property
+Spring encryptable properties is a simple utility for enabling encryption of sensitive information within property
 files, used for configuration of Spring applications. 
 
 ## License
