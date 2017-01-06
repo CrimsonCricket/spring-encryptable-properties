@@ -21,7 +21,7 @@
 	<groupId>com.crimsoncricket</groupId>
 	<artifactId>spring-encryptable-properties</artifactId>
 	<packaging>jar</packaging>
-	<version>1.1.0.RELEASE</version>
+	<version>1.1.1.RELEASE</version>
 	<name>Spring encryptable properties</name>
 	<description>Spring-encryptable-properties is a simple utility for enabling encryption of sensitive information
 		within property files, used for configuration of Spring applications.</description>
@@ -110,6 +110,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-source-plugin</artifactId>
+				<version>3.0.1</version>
 				<executions>
 					<execution>
 						<id>attach-sources</id>
@@ -122,6 +123,7 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-javadoc-plugin</artifactId>
+				<version>2.10.4</version>
 				<executions>
 					<execution>
 						<id>attach-javadocs</id>
